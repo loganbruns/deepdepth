@@ -1,0 +1,7 @@
+name: deepdepth
+channels:
+  - defaults
+dependencies:
+  - tensorflow-gpu=2.1.0
+prefix: /home/logan/anaconda3/envs/deepdepth
+
