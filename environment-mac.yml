@@ -1,0 +1,9 @@
+name: deepdepth
+channels:
+  - defaults
+dependencies:
+  - tensorflow==2.0.0
+  - tensorflow-datasets
+  - matplotlib
+prefix: /usr/local/anaconda3/envs/deepdepth
+
