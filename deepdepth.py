@@ -4,7 +4,7 @@ import time
 
 import tensorflow as tf
 
-from tensorflow.keras.layers import Dense, Flatten, Conv2D, Conv2DTranspose
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, Conv2DTranspose, LayerNormalization
 from tensorflow import keras
 from tensorflow.keras import Model
 
@@ -20,12 +20,14 @@ class MyModel(Model):
         self.conv3 = Conv2D(192, 5, 2, padding='same', activation='relu')
         self.conv4 = Conv2D(768, 5, 2, padding='same', activation='relu')
         self.conv5 = Conv2D(3072, 5, 2, padding='same', activation='relu')
+        self.layernorm1 = LayerNormalization()
         self.deconv1 = Conv2DTranspose(3072, 5, 2, padding='same', activation='relu')
         self.deconv2 = Conv2DTranspose(768, 5, 2, padding='same', activation='relu')
         self.deconv3 = Conv2DTranspose(192, 5, 2, padding='same', activation='relu')
         self.deconv4 = Conv2DTranspose(48, 5, 2, padding='same', activation='relu')
         self.deconv5 = Conv2DTranspose(12, 5, 2, padding='same', activation='relu')
-        self.conv_final = Conv2D(1, 5, padding='same', activation='relu')
+        self.layernorm2 = LayerNormalization()
+        self.conv_final = Conv2D(1, 5, padding='same', activation='linear')
 
     def call(self, x):
         x = self.conv1(x)
@@ -33,11 +35,13 @@ class MyModel(Model):
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
+        x = self.layernorm1(x)
         x = self.deconv1(x)
         x = self.deconv2(x)
         x = self.deconv3(x)
         x = self.deconv4(x)
         x = self.deconv5(x)
+        x = self.layernorm2(x)
         x = tf.squeeze(self.conv_final(x))
         return x
 
@@ -67,6 +71,7 @@ def test_step(image, depth):
 def depth_to_image(depth_map):
     depth_map = depth_map - tf.reduce_min(depth_map)
     depth_map = depth_map / tf.reduce_max(depth_map)
+    depth_map = tf.math.pow(depth_map, 1/2.2)
     depth_map = tf.stack([depth_map, depth_map, depth_map], -1)
     return depth_map
 
@@ -103,8 +108,8 @@ def main():
     for epoch in range(EPOCHS):
         starttime = time.time()
         startstep = int(ckpt.step)
-        for image, label in train:
-            train_step(image, label)
+        for image, depth in train:
+            train_step(image, depth)
             ckpt.step.assign_add(1)
 
             if not once_per_train:
@@ -134,7 +139,7 @@ def main():
                                train_loss.result(),
                                test_loss.result(),
                                (time.time()-starttime)/(int(ckpt.step)-startstep)))
-        tf.saved_model.save(model, f'{experiment_dir}/tf_model/{int(ckpt.step)}/')
+        #tf.saved_model.save(model, f'{experiment_dir}/tf_model/{int(ckpt.step)}/')
 
 if __name__ == '__main__':
     main()
