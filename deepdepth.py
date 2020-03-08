@@ -64,6 +64,12 @@ def test_step(image, depth):
     test_loss(t_loss)
     return predictions
 
+def depth_to_image(depth_map):
+    depth_map = depth_map - tf.reduce_min(depth_map)
+    depth_map = depth_map / tf.reduce_max(depth_map)
+    depth_map = tf.stack([depth_map, depth_map, depth_map], -1)
+    return depth_map
+
 def main():
     """start main training loop"""
 
@@ -117,8 +123,8 @@ def main():
             for test_image, test_label in val:
                 test_predictions = test_step(test_image, test_label)
                 tf.summary.image('context_images', test_image, step=int(ckpt.step))
-                # tf.summary.image('real_depth_map', test_label, step=int(ckpt.step))
-                # tf.summary.image('pred_depth_map', test_predictions, step=int(ckpt.step))
+                tf.summary.image('real_depth_map', depth_to_image(test_label), step=int(ckpt.step))
+                tf.summary.image('pred_depth_map', depth_to_image(test_predictions), step=int(ckpt.step))
 
             print(f"{int(ckpt.step)}: test loss={test_loss.result()}")
             tf.summary.scalar('loss', test_loss.result(), step=int(ckpt.step))
