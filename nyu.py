@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 
-def NYUv2Dataset(filename, batch_size=32):
+def NYUv2Dataset(filename):
     """ Create a dataset to read NYUv2 dataset """
 
     feature_description = {
@@ -26,8 +26,8 @@ def NYUv2Dataset(filename, batch_size=32):
     train_size = 1200
     test_size = 125
 
-    train = dataset.take(train_size).cache().shuffle(2500).batch(batch_size)
-    test = dataset.skip(train_size).take(test_size).cache().batch(batch_size)
-    val = dataset.skip(train_size+test_size).cache().batch(batch_size)
+    train = dataset.take(train_size).cache().shuffle(2500)
+    test = dataset.skip(train_size).take(test_size).cache()
+    val = dataset.skip(train_size+test_size).cache()
 
     return (train, val, test)

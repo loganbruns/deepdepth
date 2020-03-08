@@ -12,6 +12,7 @@ import numpy as np
 
 from depth_model import DepthModel
 from nyu import NYUv2Dataset
+from data_transforms import random_crop_dataset
 
 from absl import app
 from absl import flags
@@ -22,6 +23,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('experiment_name', None, 'Name of experiment to train and run.')
 
 flags.DEFINE_string('gpu', '0', 'GPU to use')
+
+flags.DEFINE_integer('batch_size', 32, 'Batch size')
 
 def depth_to_image(depth_map):
     depth_map = depth_map - tf.reduce_min(depth_map)
@@ -60,6 +63,14 @@ def main(unparsed_argv):
     # Load NYUv2 depth dataset
     train, val, test = NYUv2Dataset('data/nyu_depth_v2.tfrecord')
 
+    train = random_crop_dataset(train, 360, 480)
+    val = random_crop_dataset(val, 360, 480)
+    test = random_crop_dataset(test, 360, 480)
+
+    train = train.batch(FLAGS.batch_size)
+    val = val.batch(FLAGS.batch_size)
+    test = test.batch(FLAGS.batch_size)
+
     # Start training loop
     EPOCHS = 1000
     once_per_train = False
@@ -89,7 +100,7 @@ def main(unparsed_argv):
                 tf.summary.image('real_depth_map', depth_to_image(test_label), step=int(ckpt.step))
                 tf.summary.image('pred_depth_map', depth_to_image(test_predictions), step=int(ckpt.step))
 
-            print(f"{int(ckpt.step)}: test loss={test_loss.result()}")
+            print(f"{int(ckpt.step)}: test loss={model.test_loss.result()}")
             tf.summary.scalar('loss', model.test_loss.result(), step=int(ckpt.step))
 
         template = 'Epoch {}, Loss: {}, Test Loss: {}, Sec/Iters: {}'
