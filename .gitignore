@@ -130,3 +130,9 @@ dmypy.json
 
 # Emacs
 *~
+
+# experiments
+experiments/*
+
+# nohup.out
+nohup.out
