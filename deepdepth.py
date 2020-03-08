@@ -1,91 +1,49 @@
+
+""" Train Deep Depth Model """
+
 from __future__ import absolute_import, division, print_function, unicode_literals
 import os
 import time
+import argparse
 
 import tensorflow as tf
 
-from tensorflow.keras.layers import Dense, Flatten, Conv2D, Conv2DTranspose, LayerNormalization
-from tensorflow import keras
-from tensorflow.keras import Model
-
 import numpy as np
 
+from depth_model import DepthModel
 from nyu import NYUv2Dataset
 
-class MyModel(Model):
-    def __init__(self):
-        super(MyModel, self).__init__()
-        self.conv1 = Conv2D(12, 5, 2, padding='same', activation='relu')
-        self.conv2 = Conv2D(48, 5, 2, padding='same', activation='relu')
-        self.conv3 = Conv2D(192, 5, 2, padding='same', activation='relu')
-        self.conv4 = Conv2D(768, 5, 2, padding='same', activation='relu')
-        self.conv5 = Conv2D(3072, 5, 2, padding='same', activation='relu')
-        self.layernorm1 = LayerNormalization()
-        self.deconv1 = Conv2DTranspose(3072, 5, 2, padding='same', activation='relu')
-        self.deconv2 = Conv2DTranspose(768, 5, 2, padding='same', activation='relu')
-        self.deconv3 = Conv2DTranspose(192, 5, 2, padding='same', activation='relu')
-        self.deconv4 = Conv2DTranspose(48, 5, 2, padding='same', activation='relu')
-        self.deconv5 = Conv2DTranspose(12, 5, 2, padding='same', activation='relu')
-        self.layernorm2 = LayerNormalization()
-        self.conv_final = Conv2D(1, 5, padding='same', activation='linear')
+from absl import app
+from absl import flags
+from absl import logging
 
-    def call(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
-        x = self.conv5(x)
-        x = self.layernorm1(x)
-        x = self.deconv1(x)
-        x = self.deconv2(x)
-        x = self.deconv3(x)
-        x = self.deconv4(x)
-        x = self.deconv5(x)
-        x = self.layernorm2(x)
-        x = tf.squeeze(self.conv_final(x))
-        return x
+FLAGS = flags.FLAGS
 
-model = MyModel()
+flags.DEFINE_string('experiment_name', None, 'Name of experiment to train and run.')
 
-loss_object = tf.keras.losses.MeanSquaredError()
-optimizer = tf.keras.optimizers.Adam()
-train_loss = tf.keras.metrics.Mean(name='train_loss')
-test_loss = tf.keras.metrics.Mean(name='test_loss')
-
-@tf.function
-def train_step(image, depth):
-    with tf.GradientTape() as tape:
-        predictions = model(image)
-        loss = loss_object(depth, predictions)
-        gradients = tape.gradient(loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        train_loss(loss)
-
-@tf.function
-def test_step(image, depth):
-    predictions = model(image)
-    t_loss = loss_object(depth, predictions)
-    test_loss(t_loss)
-    return predictions
+flags.DEFINE_string('gpu', '0', 'GPU to use')
 
 def depth_to_image(depth_map):
     depth_map = depth_map - tf.reduce_min(depth_map)
     depth_map = depth_map / tf.reduce_max(depth_map)
+    # Apply gamma correction
     depth_map = tf.math.pow(depth_map, 1/2.2)
     depth_map = tf.stack([depth_map, depth_map, depth_map], -1)
     return depth_map
 
-def main():
+def main(unparsed_argv):
     """start main training loop"""
 
+    os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu
+
     # Set up experiment dir
-    experiment_name = 'baseline'
-    experiment_dir = f'./experiments/{experiment_name}'
+    experiment_dir = f'./experiments/{FLAGS.experiment_name}'
     if not os.path.exists(experiment_dir):
         os.mkdir(experiment_dir)
 
-    # Set up check pointing
-    ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=model)
+    # Load model
+    model = DepthModel()
+    ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=model.optimizer, net=model)
     manager = tf.train.CheckpointManager(ckpt, f'{experiment_dir}/tf_ckpts', max_to_keep=3)
     ckpt.restore(manager.latest_checkpoint)
     if manager.latest_checkpoint:
@@ -109,7 +67,7 @@ def main():
         starttime = time.time()
         startstep = int(ckpt.step)
         for image, depth in train:
-            train_step(image, depth)
+            model.train_step(image, depth)
             ckpt.step.assign_add(1)
 
             if not once_per_train:
@@ -117,29 +75,29 @@ def main():
                 once_per_train = True
 
             with train_summary_writer.as_default():
-                tf.summary.scalar('loss', train_loss.result(), step=int(ckpt.step))
+                tf.summary.scalar('loss', model.train_loss.result(), step=int(ckpt.step))
                 
             if int(ckpt.step) % 10 == 0:
                 save_path = manager.save()
                 print("Saved checkpoint for step {}: {}".format(int(ckpt.step), save_path))
-                print("Training loss {:1.2f}".format(train_loss.result()))
+                print("Training loss {:1.2f}".format(model.train_loss.result()))
 
         with test_summary_writer.as_default():
             for test_image, test_label in val:
-                test_predictions = test_step(test_image, test_label)
+                test_predictions = model.test_step(test_image, test_label)
                 tf.summary.image('context_images', test_image, step=int(ckpt.step))
                 tf.summary.image('real_depth_map', depth_to_image(test_label), step=int(ckpt.step))
                 tf.summary.image('pred_depth_map', depth_to_image(test_predictions), step=int(ckpt.step))
 
             print(f"{int(ckpt.step)}: test loss={test_loss.result()}")
-            tf.summary.scalar('loss', test_loss.result(), step=int(ckpt.step))
+            tf.summary.scalar('loss', model.test_loss.result(), step=int(ckpt.step))
 
         template = 'Epoch {}, Loss: {}, Test Loss: {}, Sec/Iters: {}'
         print (template.format(epoch+1,
-                               train_loss.result(),
-                               test_loss.result(),
+                               model.train_loss.result(),
+                               model.test_loss.result(),
                                (time.time()-starttime)/(int(ckpt.step)-startstep)))
         #tf.saved_model.save(model, f'{experiment_dir}/tf_model/{int(ckpt.step)}/')
 
 if __name__ == '__main__':
-    main()
+    app.run(main)

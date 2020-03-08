@@ -1,7 +1,10 @@
-EXPERIMENT=baseline
+EXPERIMENT=focalstack
 
 train:
-	CUDA_VISIBLE_DEVICES=0 python deepdepth.py
+	python deepdepth.py --experiment_name=$(EXPERIMENT) --gpu=1
+
+baseline:
+	python deepdepth.py --experiment_name=baseline --gpu=0
 
 tensorboard:
 	nohup tensorboard --bind_all --logdir ./experiments/$(EXPERIMENT)/logs &
