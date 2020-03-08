@@ -26,8 +26,8 @@ def NYUv2Dataset(filename):
     train_size = 1200
     test_size = 125
 
-    train = dataset.take(train_size).cache().shuffle(2500)
-    test = dataset.skip(train_size).take(test_size).cache()
-    val = dataset.skip(train_size+test_size).cache()
+    train = dataset.take(train_size).cache().shuffle(train_size)
+    test = dataset.skip(train_size).take(test_size).cache().shuffle(test_size)
+    val = dataset.skip(train_size+test_size).cache().shuffle(test_size)
 
     return (train, val, test)
