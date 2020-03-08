@@ -15,8 +15,9 @@ def NYUv2Dataset(filename, batch_size=32):
         example = tf.io.parse_single_example(example_proto, feature_description)
         image = example['image']
         image /= 255
-        image = tf.transpose(image, [1, 2, 0])
+        image = tf.transpose(image, [2, 1, 0])
         depth = example['depth']
+        depth = tf.transpose(depth, [1, 0])
         return (image, depth)
 
     dataset = tf.data.TFRecordDataset('data/nyu_depth_v2.tfrecord')

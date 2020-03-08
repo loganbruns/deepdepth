@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import os
+import time
 
 import tensorflow as tf
 
@@ -61,6 +62,7 @@ def test_step(image, depth):
     predictions = model(image)
     t_loss = loss_object(depth, predictions)
     test_loss(t_loss)
+    return predictions
 
 def main():
     """start main training loop"""
@@ -90,34 +92,43 @@ def main():
     train, val, test = NYUv2Dataset('data/nyu_depth_v2.tfrecord')
 
     # Start training loop
-    EPOCHS = 3
+    EPOCHS = 1000
+    once_per_train = False
     for epoch in range(EPOCHS):
+        starttime = time.time()
+        startstep = int(ckpt.step)
         for image, label in train:
             train_step(image, label)
             ckpt.step.assign_add(1)
 
-            print(f"{int(ckpt.step)}: train loss={train_loss.result()}")
+            if not once_per_train:
+                model.summary()
+                once_per_train = True
+
             with train_summary_writer.as_default():
                 tf.summary.scalar('loss', train_loss.result(), step=int(ckpt.step))
                 
             if int(ckpt.step) % 10 == 0:
                 save_path = manager.save()
                 print("Saved checkpoint for step {}: {}".format(int(ckpt.step), save_path))
-                print("loss {:1.2f}".format(train_loss.result()))
+                print("Training loss {:1.2f}".format(train_loss.result()))
 
-        for test_image, test_label in val:
-            test_step(test_image, test_label)
+        with test_summary_writer.as_default():
+            for test_image, test_label in val:
+                test_predictions = test_step(test_image, test_label)
+                tf.summary.image('context_images', test_image, step=int(ckpt.step))
+                # tf.summary.image('real_depth_map', test_label, step=int(ckpt.step))
+                # tf.summary.image('pred_depth_map', test_predictions, step=int(ckpt.step))
 
             print(f"{int(ckpt.step)}: test loss={test_loss.result()}")
-            with test_summary_writer.as_default():
-                tf.summary.scalar('loss', test_loss.result(), step=int(ckpt.step))
+            tf.summary.scalar('loss', test_loss.result(), step=int(ckpt.step))
 
-        template = 'Epoch {}, Loss: {}, Test Loss: {}'
+        template = 'Epoch {}, Loss: {}, Test Loss: {}, Sec/Iters: {}'
         print (template.format(epoch+1,
                                train_loss.result(),
-                               test_loss.result()))
-        model.summary()
-        tf.saved_model.save(model, f'{experiment_dir}/tf_model/{epoch}/')
+                               test_loss.result(),
+                               (time.time()-starttime)/(int(ckpt.step)-startstep)))
+        tf.saved_model.save(model, f'{experiment_dir}/tf_model/{int(ckpt.step)}/')
 
 if __name__ == '__main__':
     main()
