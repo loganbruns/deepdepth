@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 
-def NYUv2Dataset(filename):
+def NYUv2Dataset(filename, split=True):
     """ Create a dataset to read NYUv2 dataset """
 
     feature_description = {
@@ -20,14 +20,50 @@ def NYUv2Dataset(filename):
         depth = tf.transpose(depth, [1, 0])
         return (image, depth)
 
-    dataset = tf.data.TFRecordDataset('data/nyu_depth_v2.tfrecord')
+    dataset = tf.data.TFRecordDataset(filename)
     dataset = dataset.map(_parse_function)
-    
-    train_size = 1200
-    test_size = 125
 
-    train = dataset.take(train_size).cache().shuffle(train_size)
-    test = dataset.skip(train_size).take(test_size).cache().shuffle(test_size)
-    val = dataset.skip(train_size+test_size).cache().shuffle(test_size)
+    if split:
+        train_size = 1200
+        test_size = 125
 
-    return (train, val, test)
+        train = dataset.take(train_size).cache().shuffle(train_size)
+        test = dataset.skip(train_size).take(test_size).cache().shuffle(test_size)
+        val = dataset.skip(train_size+test_size).take(test_size).cache().shuffle(test_size)
+
+        return (train, val, test)
+    else:
+        return dataset
+
+def NYUv2FocalDataset(filename, split=True):
+    """ Create a dataset to read NYUv2 dataset with precomputed focal stacks """
+
+    feature_description = {
+        'images': tf.io.FixedLenFeature([6, 480, 640, 3], tf.float32),
+        'depth': tf.io.FixedLenFeature([480, 640], tf.float32),
+        'focal_lengths': tf.io.FixedLenFeature([5], tf.float32),
+    }
+
+    def _parse_function(example_proto):
+        example = tf.io.parse_single_example(example_proto, feature_description)
+        return (
+            example['images'],
+            example['depth'],
+            tf.concat(([0.], example['focal_lengths']), axis=0)
+        )
+
+    dataset = tf.data.TFRecordDataset(filename)
+    dataset = dataset.map(_parse_function)
+    dataset = dataset.apply(tf.data.experimental.ignore_errors())
+
+    if split:
+        train_size = 19
+        test_size = 3
+
+        train = dataset.take(train_size).cache().shuffle(train_size)
+        test = dataset.skip(train_size).take(test_size).cache().shuffle(test_size)
+        val = dataset.skip(train_size+test_size).take(test_size).cache().shuffle(test_size)
+
+        return (train, val, test)
+    else:
+        return dataset

@@ -25,3 +25,32 @@ $ python h52tfrecord.py
 ```
 
 This will generate the nyu\_depth\_v2.tfrecord file in the data directory.
+
+#### Add precomputed focal stack to dataset
+
+```
+$ python nyu2nyufocal.py
+```
+
+This will generate the nyu\_focal\_stack.tfrecord file in the data directory.
+
+### Training steps
+
+#### Start tensorboard
+
+```
+$ make tensorboard
+```
+
+#### Start training
+
+```
+$ make train
+```
+
+#### Monitor training and results in tensorboard
+
+Go to http://localhost:6006/ or http://hostname:6006/ and click images
+tab to see examples of the context images, predictions, and ground
+truth.
+

@@ -11,7 +11,7 @@ import tensorflow as tf
 import numpy as np
 
 from depth_model import DepthModel
-from nyu import NYUv2Dataset
+from nyu import NYUv2FocalDataset
 from data_transforms import random_crop_dataset
 
 from absl import app
@@ -25,6 +25,8 @@ flags.DEFINE_string('experiment_name', None, 'Name of experiment to train and ru
 flags.DEFINE_string('gpu', '0', 'GPU to use')
 
 flags.DEFINE_integer('batch_size', 32, 'Batch size')
+
+flags.DEFINE_integer('context_length', 6, 'Context length- number of focal images ')
 
 def depth_to_image(depth_map):
     depth_map = depth_map - tf.reduce_min(depth_map)
@@ -45,7 +47,7 @@ def main(unparsed_argv):
         os.mkdir(experiment_dir)
 
     # Load model
-    model = DepthModel()
+    model = DepthModel(FLAGS.context_length)
     ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=model.optimizer, net=model)
     manager = tf.train.CheckpointManager(ckpt, f'{experiment_dir}/tf_ckpts', max_to_keep=3)
     ckpt.restore(manager.latest_checkpoint)
@@ -61,24 +63,26 @@ def main(unparsed_argv):
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)        
 
     # Load NYUv2 depth dataset
-    train, val, test = NYUv2Dataset('data/nyu_depth_v2.tfrecord')
+    train, val, test = NYUv2FocalDataset('data/nyu_focal_stack.tfrecord')
 
-    train = random_crop_dataset(train, 360, 480)
-    val = random_crop_dataset(val, 360, 480)
-    test = random_crop_dataset(test, 360, 480)
+    train = random_crop_dataset(train, 240, 320)
+    val = random_crop_dataset(val, 240, 320)
+    test = random_crop_dataset(test, 240, 320)
 
     train = train.batch(FLAGS.batch_size)
     val = val.batch(FLAGS.batch_size)
     test = test.batch(FLAGS.batch_size)
 
     # Start training loop
-    EPOCHS = 1000
+    EPOCHS = 1000000
     once_per_train = False
     for epoch in range(EPOCHS):
         starttime = time.time()
         startstep = int(ckpt.step)
-        for image, depth in train:
-            model.train_step(image, depth)
+        
+        once_per_epoch = False
+        for images, depth, focal_lengths in train:
+            predictions = model.train_step(images, depth, focal_lengths)
             ckpt.step.assign_add(1)
 
             if not once_per_train:
@@ -87,6 +91,13 @@ def main(unparsed_argv):
 
             with train_summary_writer.as_default():
                 tf.summary.scalar('loss', model.train_loss.result(), step=int(ckpt.step))
+
+                if not once_per_epoch:
+                    for i in range(FLAGS.context_length):
+                        tf.summary.image(f'context_image_{i}', images[:,i,:,:], step=int(ckpt.step)-1, max_outputs=1)
+                    tf.summary.image('real_depth_map', depth_to_image(depth), step=int(ckpt.step)-1, max_outputs=1)
+                    tf.summary.image('pred_depth_map', depth_to_image(predictions), step=int(ckpt.step)-1, max_outputs=1)
+                    once_per_epoch = True
                 
             if int(ckpt.step) % 10 == 0:
                 save_path = manager.save()
@@ -94,11 +105,12 @@ def main(unparsed_argv):
                 print("Training loss {:1.2f}".format(model.train_loss.result()))
 
         with test_summary_writer.as_default():
-            for test_image, test_label in val:
-                test_predictions = model.test_step(test_image, test_label)
-                tf.summary.image('context_images', test_image, step=int(ckpt.step))
-                tf.summary.image('real_depth_map', depth_to_image(test_label), step=int(ckpt.step))
-                tf.summary.image('pred_depth_map', depth_to_image(test_predictions), step=int(ckpt.step))
+            for test_images, test_depth, test_focal_lengths in val:
+                test_predictions = model.test_step(test_images, test_depth, test_focal_lengths)
+                for i in range(FLAGS.context_length):
+                    tf.summary.image(f'context_image_{i}', test_images[:,i,:,:], step=int(ckpt.step), max_outputs=1)
+                tf.summary.image('real_depth_map', depth_to_image(test_depth), step=int(ckpt.step), max_outputs=1)
+                tf.summary.image('pred_depth_map', depth_to_image(test_predictions), step=int(ckpt.step), max_outputs=1)
 
             print(f"{int(ckpt.step)}: test loss={model.test_loss.result()}")
             tf.summary.scalar('loss', model.test_loss.result(), step=int(ckpt.step))
