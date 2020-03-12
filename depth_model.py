@@ -35,9 +35,9 @@ class DepthModel(Model):
         self.train_loss = tf.keras.metrics.Mean(name='train_loss')
         self.test_loss = tf.keras.metrics.Mean(name='test_loss')
 
-    def call(self, images, focal_lengths):
+    def call(self, images, focal_lengths, context_length):
         embeddings = []
-        for i in range(self.context_length):
+        for i in range(context_length):
             x = images[:,i,:,:,:]
             focal_length = focal_lengths[:,i]
             focal_length = tf.reshape(focal_length, focal_length.shape + [1, 1, 1])
@@ -66,9 +66,11 @@ class DepthModel(Model):
         return x
 
     @tf.function
-    def train_step(self, images, depth, focal_lengths):
+    def train_step(self, images, depth, focal_lengths, context_length=None):
+        if not context_length:
+            context_length = self.context_length
         with tf.GradientTape() as tape:
-            predictions = self(images, focal_lengths)
+            predictions = self(images, focal_lengths, context_length)
             loss = self.loss_object(depth, predictions)
             gradients = tape.gradient(loss, self.trainable_variables)
             self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
@@ -76,8 +78,10 @@ class DepthModel(Model):
             return predictions
 
     @tf.function
-    def test_step(self, images, depth, focal_lengths):
-        predictions = self(images, focal_lengths)
+    def test_step(self, images, depth, focal_lengths, context_length=None):
+        if not context_length:
+            context_length = self.context_length
+        predictions = self(images, focal_lengths, context_length)
         t_loss = self.loss_object(depth, predictions)
         self.test_loss(t_loss)
         return predictions
