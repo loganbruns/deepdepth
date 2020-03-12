@@ -93,10 +93,10 @@ def main(unparsed_argv):
             if int(ckpt.step) % 500 == 0:
                 for i in range(FLAGS.context_length):
                     tf.summary.image(f'context_image_{i}', images[:,i,:,:], step=int(ckpt.step)-1, max_outputs=1)
-                    tf.summary.image('real_depth_map', depth_to_image(depth), step=int(ckpt.step)-1, max_outputs=1)
-                    tf.summary.image('pred_depth_map', depth_to_image(predictions), step=int(ckpt.step)-1, max_outputs=1)
-                    predictions = model.train_step(images, depth, focal_lengths, 1)
-                    tf.summary.image('single_depth_map', depth_to_image(predictions), step=int(ckpt.step)-1, max_outputs=1)
+                tf.summary.image('real_depth_map', depth_to_image(depth), step=int(ckpt.step)-1, max_outputs=1)
+                tf.summary.image('pred_depth_map', depth_to_image(predictions), step=int(ckpt.step)-1, max_outputs=1)
+                predictions = model.train_step(images, depth, focal_lengths, 1)
+                tf.summary.image('single_depth_map', depth_to_image(predictions), step=int(ckpt.step)-1, max_outputs=1)
                 
         if int(ckpt.step) % 100 == 0:
             save_path = manager.save()
