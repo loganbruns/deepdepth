@@ -69,58 +69,63 @@ def main(unparsed_argv):
     val = random_crop_dataset(val, 240, 320)
     test = random_crop_dataset(test, 240, 320)
 
-    train = train.batch(FLAGS.batch_size)
+    train = train.repeat().batch(FLAGS.batch_size).prefetch(128)
     val = val.batch(FLAGS.batch_size)
     test = test.batch(FLAGS.batch_size)
 
     # Start training loop
-    EPOCHS = 1000000
     once_per_train = False
-    for epoch in range(EPOCHS):
-        starttime = time.time()
-        startstep = int(ckpt.step)
+    starttime = time.time()
+    startstep = int(ckpt.step)
         
-        once_per_epoch = False
-        for images, depth, focal_lengths in train:
-            predictions = model.train_step(images, depth, focal_lengths)
-            ckpt.step.assign_add(1)
+    once_per_epoch = False
+    for images, depth, focal_lengths in train:
+        predictions = model.train_step(images, depth, focal_lengths)
+        ckpt.step.assign_add(1)
 
-            if not once_per_train:
-                model.summary()
-                once_per_train = True
+        if not once_per_train:
+            model.summary()
+            once_per_train = True
 
-            with train_summary_writer.as_default():
-                tf.summary.scalar('loss', model.train_loss.result(), step=int(ckpt.step))
+        with train_summary_writer.as_default():
+            tf.summary.scalar('loss', model.train_loss.result(), step=int(ckpt.step))
 
-                if not once_per_epoch:
-                    for i in range(FLAGS.context_length):
-                        tf.summary.image(f'context_image_{i}', images[:,i,:,:], step=int(ckpt.step)-1, max_outputs=1)
+            if int(ckpt.step) % 500 == 0:
+                for i in range(FLAGS.context_length):
+                    tf.summary.image(f'context_image_{i}', images[:,i,:,:], step=int(ckpt.step)-1, max_outputs=1)
                     tf.summary.image('real_depth_map', depth_to_image(depth), step=int(ckpt.step)-1, max_outputs=1)
                     tf.summary.image('pred_depth_map', depth_to_image(predictions), step=int(ckpt.step)-1, max_outputs=1)
-                    once_per_epoch = True
+                    predictions = model.train_step(images, depth, focal_lengths, 1)
+                    tf.summary.image('single_depth_map', depth_to_image(predictions), step=int(ckpt.step)-1, max_outputs=1)
                 
-            if int(ckpt.step) % 10 == 0:
-                save_path = manager.save()
-                print("Saved checkpoint for step {}: {}".format(int(ckpt.step), save_path))
-                print("Training loss {:1.2f}".format(model.train_loss.result()))
+        if int(ckpt.step) % 100 == 0:
+            save_path = manager.save()
+            print("Saved checkpoint for step {}: {}".format(int(ckpt.step), save_path))
+            print("Training loss {:1.2f}".format(model.train_loss.result()))
 
-        with test_summary_writer.as_default():
-            for test_images, test_depth, test_focal_lengths in val:
-                test_predictions = model.test_step(test_images, test_depth, test_focal_lengths)
-                for i in range(FLAGS.context_length):
-                    tf.summary.image(f'context_image_{i}', test_images[:,i,:,:], step=int(ckpt.step), max_outputs=1)
-                tf.summary.image('real_depth_map', depth_to_image(test_depth), step=int(ckpt.step), max_outputs=1)
-                tf.summary.image('pred_depth_map', depth_to_image(test_predictions), step=int(ckpt.step), max_outputs=1)
+        if int(ckpt.step) % 500 == 0:
+            with test_summary_writer.as_default():
+                for test_images, test_depth, test_focal_lengths in val:
+                    test_predictions = model.test_step(test_images, test_depth, test_focal_lengths)
+                    for i in range(FLAGS.context_length):
+                        tf.summary.image(f'context_image_{i}', test_images[:,i,:,:], step=int(ckpt.step), max_outputs=1)
+                    tf.summary.image('real_depth_map', depth_to_image(test_depth), step=int(ckpt.step), max_outputs=1)
+                    tf.summary.image('pred_depth_map', depth_to_image(test_predictions), step=int(ckpt.step), max_outputs=1)
+                    test_predictions = model.test_step(test_images, test_depth, test_focal_lengths, 1)
+                    tf.summary.image('single_depth_map', depth_to_image(test_predictions), step=int(ckpt.step), max_outputs=1)
 
             print(f"{int(ckpt.step)}: test loss={model.test_loss.result()}")
             tf.summary.scalar('loss', model.test_loss.result(), step=int(ckpt.step))
 
-        template = 'Epoch {}, Loss: {}, Test Loss: {}, Sec/Iters: {}'
-        print (template.format(epoch+1,
-                               model.train_loss.result(),
-                               model.test_loss.result(),
-                               (time.time()-starttime)/(int(ckpt.step)-startstep)))
-        #tf.saved_model.save(model, f'{experiment_dir}/tf_model/{int(ckpt.step)}/')
+            template = 'Step {}, Loss: {}, Test Loss: {}, Sec/Iters: {}'
+            print (template.format(int(ckpt.step),
+                                   model.train_loss.result(),
+                                   model.test_loss.result(),
+                                   (time.time()-starttime)/(int(ckpt.step)-startstep)))
+            starttime = time.time()
+            startstep = int(ckpt.step)
+
+            #tf.saved_model.save(model, f'{experiment_dir}/tf_model/{int(ckpt.step)}/')
 
 if __name__ == '__main__':
     app.run(main)

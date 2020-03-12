@@ -57,8 +57,8 @@ def NYUv2FocalDataset(filename, split=True):
     dataset = dataset.apply(tf.data.experimental.ignore_errors())
 
     if split:
-        train_size = 19
-        test_size = 3
+        train_size = 80
+        test_size = 5
 
         train = dataset.take(train_size).cache().shuffle(train_size)
         test = dataset.skip(train_size).take(test_size).cache().shuffle(test_size)
