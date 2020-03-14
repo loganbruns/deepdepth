@@ -26,28 +26,29 @@ Contact: Logan Bruns <logan@gedanken.org>
 
 #### Source files
 
-Makefile: top level makefile to run training and start tensorboard
+_Makefile_: top level makefile to run training and start tensorboard
 
-deepdepth.py: main script containing training loop
+_deepdepth.py_: main script containing training loop
 
-depth\_model.py: model class containing model architecture and losses
+_depth\_model.py_: model class containing model architecture and losses
 
-data_transforms.py: dataset transforms for creating features and augmenting data
+_data\_transforms.py_: dataset transforms for creating features and augmenting data
 
-nyu.py: NYUv2 dataset loader
+_nyu.py_: NYUv2 dataset loader
 
-mat2h5.m: matlab script to help convert data
+_mat2h5.m_: matlab script to help convert data
 
-h52tfrecord.py: script to convert hdf5 data into tfrecord
+_h52tfrecord.py_: script to convert hdf5 data into tfrecord
 
-nyu2nyufocal.py: script to compute focal stacks
+_nyu2nyufocal.py_: script to compute focal stacks
 
-environment[-mac].yml: conda environment yaml for creating python virtual environment
+_environment[-mac].yml_: conda environment yaml for creating python virtual environment
 
 #### Directories
 
-data/ directory to download dataset to and store transformed forms
-experiments/ directory to hold experiment checkpoints and tensorboard logs
+_data/_ directory to download dataset to and store transformed forms
+
+_experiments/_ directory to hold experiment checkpoints and tensorboard logs
 
 ### Environment preparation steps
 
