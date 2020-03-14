@@ -1,4 +1,53 @@
+# Scene Representations from Focal Stack for Depth Estimation
+Contact: Logan Bruns <logan@gedanken.org>
 
+### Abstract from project paper
+
+  This project explores the use of focal stacks as deep learning scene
+  representation embeddings to improve depth estimation with or
+  without the focal stack at inference time. The general approach
+  taken was to train a deep learning model to first create a scene
+  embedding for each image and its focal length in the focal
+  stack. These scene embeddings are then used to create a single
+  combined scene embedding which is then sent through a decoder
+  network to predict the depth map. The intuition is that this allows
+  the network to learn the depth cues from varying blur in each image
+  along with its focal length. More training would be desirable as the
+  test performance is still improving but a few promising conclusions
+  seem evident. The deep learning model is able to learn from the blur
+  depth cues in the focal stack. Beyond learning how to render the
+  depth map from the focal stack it also appears to have learned a
+  prior on the common features of the depth maps such as the
+  walls. This prior can improve on the sensory gathered depth maps
+  much as a human's grounding would be able to guess what would be in
+  shadow based on what can be seen.
+  
+### Repository layout
+
+#### Source files
+
+Makefile: top level makefile to run training and start tensorboard
+
+deepdepth.py: main script containing training loop
+
+depth\_model.py: model class containing model architecture and losses
+
+data_transforms.py: dataset transforms for creating features and augmenting data
+
+nyu.py: NYUv2 dataset loader
+
+mat2h5.m: matlab script to help convert data
+
+h52tfrecord.py: script to convert hdf5 data into tfrecord
+
+nyu2nyufocal.py: script to compute focal stacks
+
+environment[-mac].yml: conda environment yaml for creating python virtual environment
+
+#### Directories
+
+data/ directory to download dataset to and store transformed forms
+experiments/ directory to hold experiment checkpoints and tensorboard logs
 
 ### Environment preparation steps
 
