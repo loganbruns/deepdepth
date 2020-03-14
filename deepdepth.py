@@ -114,13 +114,19 @@ def main(unparsed_argv):
                     test_predictions = model.test_step(test_images, test_depth, test_focal_lengths, 1)
                     tf.summary.image('single_depth_map', depth_to_image(test_predictions), step=int(ckpt.step), max_outputs=1)
 
-            print(f"{int(ckpt.step)}: test loss={model.test_loss.result()}")
+            print(f"{int(ckpt.step)}: test loss={model.test_loss.result()}, ssim={model.test_ssim.result()}, psnr={model.test_psnr.result()}")
             tf.summary.scalar('loss', model.test_loss.result(), step=int(ckpt.step))
+            tf.summary.scalar('ssim', model.test_ssim.result(), step=int(ckpt.step))
+            tf.summary.scalar('psnr', model.test_psnr.result(), step=int(ckpt.step))
 
-            template = 'Step {}, Loss: {}, Test Loss: {}, Sec/Iters: {}'
+            template = 'Step {}, Loss: {}, SSIM: {}, PSNR: {}, Test Loss: {}, SSIM: {}, PSNR: {}, Sec/Iters: {}'
             print (template.format(int(ckpt.step),
                                    model.train_loss.result(),
+                                   model.train_ssim.result(),
+                                   model.train_psnr.result(),
                                    model.test_loss.result(),
+                                   model.test_ssim.result(),
+                                   model.test_psnr.result(),
                                    (time.time()-starttime)/(int(ckpt.step)-startstep)))
             starttime = time.time()
             startstep = int(ckpt.step)

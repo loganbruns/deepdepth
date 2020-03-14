@@ -34,6 +34,10 @@ class DepthModel(Model):
         self.optimizer = tf.keras.optimizers.Adam()
         self.train_loss = tf.keras.metrics.Mean(name='train_loss')
         self.test_loss = tf.keras.metrics.Mean(name='test_loss')
+        self.train_ssim = tf.keras.metrics.Mean(name='train_ssim')
+        self.test_ssim = tf.keras.metrics.Mean(name='test_ssim')
+        self.train_psnr = tf.keras.metrics.Mean(name='train_psnr')
+        self.test_psnr = tf.keras.metrics.Mean(name='test_psnr')
 
     def call(self, images, focal_lengths, context_length):
         embeddings = []
@@ -75,6 +79,10 @@ class DepthModel(Model):
             gradients = tape.gradient(loss, self.trainable_variables)
             self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
             self.train_loss(loss)
+            depth_image = tf.expand_dims(depth, -1)
+            predictions_image = tf.expand_dims(predictions, -1)
+            self.train_ssim(tf.image.ssim(depth_image, predictions_image, max_val=10.0))
+            self.train_psnr(tf.image.psnr(depth_image, predictions_image, max_val=10.0))
             return predictions
 
     @tf.function
@@ -84,6 +92,10 @@ class DepthModel(Model):
         predictions = self(images, focal_lengths, context_length)
         t_loss = self.loss_object(depth, predictions)
         self.test_loss(t_loss)
+        depth_image = tf.expand_dims(depth, -1)
+        predictions_image = tf.expand_dims(predictions, -1)
+        self.test_ssim(tf.image.ssim(depth_image, predictions_image, max_val=10.0))
+        self.test_psnr(tf.image.psnr(depth_image, predictions_image, max_val=10.0))
         return predictions
 
 
