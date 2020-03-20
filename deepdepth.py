@@ -89,6 +89,8 @@ def main(unparsed_argv):
 
         with train_summary_writer.as_default():
             tf.summary.scalar('loss', model.train_loss.result(), step=int(ckpt.step))
+            tf.summary.scalar('ssim', model.train_ssim.result(), step=int(ckpt.step))
+            tf.summary.scalar('psnr', model.train_psnr.result(), step=int(ckpt.step))
 
             if int(ckpt.step) % 500 == 0:
                 for i in range(FLAGS.context_length):
@@ -114,10 +116,10 @@ def main(unparsed_argv):
                     test_predictions = model.test_step(test_images, test_depth, test_focal_lengths, 1)
                     tf.summary.image('single_depth_map', depth_to_image(test_predictions), step=int(ckpt.step), max_outputs=1)
 
-            print(f"{int(ckpt.step)}: test loss={model.test_loss.result()}, ssim={model.test_ssim.result()}, psnr={model.test_psnr.result()}")
-            tf.summary.scalar('loss', model.test_loss.result(), step=int(ckpt.step))
-            tf.summary.scalar('ssim', model.test_ssim.result(), step=int(ckpt.step))
-            tf.summary.scalar('psnr', model.test_psnr.result(), step=int(ckpt.step))
+                print(f"{int(ckpt.step)}: test loss={model.test_loss.result()}, ssim={model.test_ssim.result()}, psnr={model.test_psnr.result()}")
+                tf.summary.scalar('loss', model.test_loss.result(), step=int(ckpt.step))
+                tf.summary.scalar('ssim', model.test_ssim.result(), step=int(ckpt.step))
+                tf.summary.scalar('psnr', model.test_psnr.result(), step=int(ckpt.step))
 
             template = 'Step {}, Loss: {}, SSIM: {}, PSNR: {}, Test Loss: {}, SSIM: {}, PSNR: {}, Sec/Iters: {}'
             print (template.format(int(ckpt.step),
