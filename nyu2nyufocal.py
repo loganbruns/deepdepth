@@ -2,11 +2,17 @@
 """ Add focal stacks to NYUv2 tfrecord files """
 
 import tensorflow as tf
+import os
 
 from nyu import NYUv2Dataset
 from data_transforms import random_focal_stack
 
 def main():
+
+    # Dataset transforms do not use GPU so disable it and enable CPU JIT
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    os.environ['TF_XLA_FLAGS'] = '--tf_xla_cpu_global_jit'
+    tf.config.optimizer.set_jit(True)        
 
     dataset = NYUv2Dataset('data/nyu_depth_v2.tfrecord', split=False)
 

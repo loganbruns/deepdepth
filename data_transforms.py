@@ -31,6 +31,7 @@ def random_crop_dataset(dataset, height, width):
     )
 
 
+@tf.function
 def simulate_random_focal_lengths(image, depth, num_images, max_blur=4):
     quantized_depth, _, _ = tf.quantization.quantize(depth, 0, 10, tf.quint8)
     quantized_depth = tf.cast(quantized_depth, tf.int16)

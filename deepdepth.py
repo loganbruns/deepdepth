@@ -3,6 +3,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 import os
+import glob
 import time
 import argparse
 
@@ -24,7 +25,7 @@ flags.DEFINE_string('experiment_name', None, 'Name of experiment to train and ru
 
 flags.DEFINE_string('gpu', '0', 'GPU to use')
 
-flags.DEFINE_integer('batch_size', 72, 'Batch size')
+flags.DEFINE_integer('batch_size', 64, 'Batch size')
 
 flags.DEFINE_integer('context_length', 6, 'Context length- number of focal images ')
 
@@ -41,7 +42,8 @@ def main(unparsed_argv):
 
     os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu
     for device in tf.config.list_physical_devices('GPU'):
-        tf.config.experimental.set_memory_growth(device, True) 
+        tf.config.experimental.set_memory_growth(device, True)
+    tf.config.optimizer.set_jit(True)        
 
     # Set up experiment dir
     experiment_dir = f'./experiments/{FLAGS.experiment_name}'
@@ -65,7 +67,7 @@ def main(unparsed_argv):
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)        
 
     # Load NYUv2 depth dataset
-    train, val, test = NYUv2FocalDataset('data/nyu_focal_stack.tfrecord')
+    train, val, test = NYUv2FocalDataset(glob.glob('data/nyu_focal_stack*.tfrecord'))
 
     train = random_crop_dataset(train, 240, 320)
     val = random_crop_dataset(val, 240, 320)
