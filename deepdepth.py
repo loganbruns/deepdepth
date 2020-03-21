@@ -24,7 +24,7 @@ flags.DEFINE_string('experiment_name', None, 'Name of experiment to train and ru
 
 flags.DEFINE_string('gpu', '0', 'GPU to use')
 
-flags.DEFINE_integer('batch_size', 32, 'Batch size')
+flags.DEFINE_integer('batch_size', 72, 'Batch size')
 
 flags.DEFINE_integer('context_length', 6, 'Context length- number of focal images ')
 
@@ -40,6 +40,8 @@ def main(unparsed_argv):
     """start main training loop"""
 
     os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu
+    for device in tf.config.list_physical_devices('GPU'):
+        tf.config.experimental.set_memory_growth(device, True) 
 
     # Set up experiment dir
     experiment_dir = f'./experiments/{FLAGS.experiment_name}'
