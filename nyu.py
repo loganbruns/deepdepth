@@ -35,7 +35,7 @@ def NYUv2Dataset(filename, split=True):
     else:
         return dataset
 
-def NYUv2FocalDataset(filename, split=True):
+def NYUv2FocalDataset(train_path, val_path, test_path):
     """ Create a dataset to read NYUv2 dataset with precomputed focal stacks """
 
     feature_description = {
@@ -52,18 +52,16 @@ def NYUv2FocalDataset(filename, split=True):
             tf.concat(([0.], example['focal_lengths']), axis=0)
         )
 
-    dataset = tf.data.TFRecordDataset(filename)
-    dataset = dataset.map(_parse_function)
-    dataset = dataset.apply(tf.data.experimental.ignore_errors())
+    train = tf.data.Dataset.list_files(train_path + '/*.tfrecord')
+    train = train.interleave(lambda filename: tf.data.TFRecordDataset(filename, compression_type='GZIP'))
+    train = train.map(_parse_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    if split:
-        train_size = 661
-        test_size = 5
+    val = tf.data.Dataset.list_files(val_path + '/*.tfrecord')
+    val = val.interleave(lambda filename: tf.data.TFRecordDataset(filename, compression_type='GZIP'))
+    val = val.map(_parse_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-        train = dataset.take(train_size).cache().shuffle(train_size)
-        test = dataset.skip(train_size).take(test_size).cache().shuffle(test_size)
-        val = dataset.skip(train_size+test_size).take(test_size).cache().shuffle(test_size)
+    test = tf.data.Dataset.list_files(val_path + '/*.tfrecord')
+    test = test.interleave(lambda filename: tf.data.TFRecordDataset(filename, compression_type='GZIP'))
+    test = test.map(_parse_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-        return (train, val, test)
-    else:
-        return dataset
+    return (train, val, test)

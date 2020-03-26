@@ -25,7 +25,7 @@ flags.DEFINE_string('experiment_name', None, 'Name of experiment to train and ru
 
 flags.DEFINE_string('gpu', '0', 'GPU to use')
 
-flags.DEFINE_integer('batch_size', 64, 'Batch size')
+flags.DEFINE_integer('batch_size', 100, 'Batch size')
 
 flags.DEFINE_integer('context_length', 6, 'Context length- number of focal images ')
 
@@ -43,7 +43,7 @@ def main(unparsed_argv):
     os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu
     for device in tf.config.list_physical_devices('GPU'):
         tf.config.experimental.set_memory_growth(device, True)
-    tf.config.optimizer.set_jit(True)        
+    #tf.config.optimizer.set_jit(True)
 
     # Set up experiment dir
     experiment_dir = f'./experiments/{FLAGS.experiment_name}'
@@ -67,14 +67,16 @@ def main(unparsed_argv):
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)        
 
     # Load NYUv2 depth dataset
-    train, val, test = NYUv2FocalDataset(glob.glob('data/nyu_focal_stack*.tfrecord'))
+    train, val, test = NYUv2FocalDataset('data/train', 'data/val', 'data/test')
 
+    train = train.cache()
     train = random_crop_dataset(train, 240, 320)
+    val = val.cache()
     val = random_crop_dataset(val, 240, 320)
     test = random_crop_dataset(test, 240, 320)
 
-    train = train.repeat().batch(FLAGS.batch_size).prefetch(128)
-    val = val.batch(FLAGS.batch_size)
+    train = train.repeat().batch(FLAGS.batch_size).prefetch(4)
+    val = val.batch(FLAGS.batch_size).prefetch(1)
     test = test.batch(FLAGS.batch_size)
 
     # Start training loop

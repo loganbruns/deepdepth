@@ -84,6 +84,23 @@ $ python nyu2nyufocal.py
 
 This will generate the nyu\_focal\_stack.tfrecord file in the data directory.
 
+#### Compress and shard dataset
+
+```
+$ python compress_and_shard.py
+```
+
+This will generate the compressed\_nyu\_focal\_stack\_*.tfrecord files in the data directory.
+
+#### Split dataset into training, validation, and test
+
+```
+$ mkdir data/train data/val data/test
+$ mv data/compressed_nyu_focal_stack_8?.tfrecord data/val
+$ mv data/compressed_nyu_focal_stack_9?.tfrecord data/test
+$ mv data/compressed_nyu_focal_stack_*.tfrecord data/train
+```
+
 ### Training steps
 
 #### Start tensorboard
