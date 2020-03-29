@@ -25,7 +25,7 @@ flags.DEFINE_string('experiment_name', None, 'Name of experiment to train and ru
 
 flags.DEFINE_string('gpu', '0', 'GPU to use')
 
-flags.DEFINE_integer('batch_size', 100, 'Batch size')
+flags.DEFINE_integer('batch_size', 200, 'Batch size')
 
 flags.DEFINE_integer('context_length', 6, 'Context length- number of focal images ')
 
