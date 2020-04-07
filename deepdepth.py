@@ -75,8 +75,8 @@ def main(unparsed_argv):
     val = random_crop_dataset(val, 240, 320)
     test = random_crop_dataset(test, 240, 320)
 
-    train = train.repeat().batch(FLAGS.batch_size).prefetch(4)
-    val = val.batch(FLAGS.batch_size).prefetch(1)
+    train = train.repeat().shuffle(1000).batch(FLAGS.batch_size).prefetch(4)
+    val = val.shuffle(150).batch(FLAGS.batch_size).prefetch(1)
     test = test.batch(FLAGS.batch_size)
 
     # Start training loop
