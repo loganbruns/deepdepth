@@ -22,6 +22,13 @@ Contact: Logan Bruns <logan@gedanken.org>
   much as a human's grounding would be able to guess what would be in
   shadow based on what can be seen.
   
+### Example predictions
+
+| Original Image | Predicted Depth Map | Measured Depth Map |
+| <img src="images/image_609500.png" alt="Original Image" width="1024"> | <img src="images/pred_609500.png" alt="Predicted Depth Map" width="1024"> | <img src="images/real_609500.png" alt="Measured Depth Map" width="1024"> |
+| <img src="images/image_633000.png" alt="Original Image" width="1024"> | <img src="images/pred_633000.png" alt="Predicted Depth Map" width="1024"> | <img src="images/real_633000.png" alt="Measured Depth Map" width="1024"> |
+| <img src="images/image_684500.png" alt="Original Image" width="1024"> | <img src="images/pred_684500.png" alt="Predicted Depth Map" width="1024"> | <img src="images/real_684500.png" alt="Measured Depth Map" width="1024"> |
+  
 ### Repository layout
 
 #### Source files
