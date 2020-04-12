@@ -22,7 +22,7 @@ Contact: Logan Bruns <logan@gedanken.org>
   much as a human's grounding would be able to guess what would be in
   shadow based on what can be seen.
   
-### Example predictions
+### Example predictions on test dataset
 
 | Original Image | Predicted Depth Map | Measured Depth Map |
 |---------|-------------|-------|
